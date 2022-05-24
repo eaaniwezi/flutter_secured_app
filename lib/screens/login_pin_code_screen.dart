@@ -1,25 +1,31 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
-import 'package:secured_flutter_app/screens/mnemonics_screen.dart';
-
-import '../const/theme.dart' as colors;
 import 'package:flutter/material.dart';
+import '../const/theme.dart' as colors;
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:slide_countdown/slide_countdown.dart';
+import 'package:stream_duration/stream_duration.dart';
+import 'package:secured_flutter_app/screens/mnemonics_screen.dart';
 import 'package:secured_flutter_app/repositories/security_repository.dart';
 import 'package:secured_flutter_app/widgets/pin_code_screen_widgets/digit_holder_widget.dart';
 import 'package:secured_flutter_app/widgets/pin_code_screen_widgets/keyboard_number_widget.dart';
 
-class SetPinCodeScreen extends StatefulWidget {
-  const SetPinCodeScreen({Key? key}) : super(key: key);
+class LoginPinCodeScreen extends StatefulWidget {
+  const LoginPinCodeScreen({Key? key}) : super(key: key);
 
   @override
-  State<SetPinCodeScreen> createState() => _SetPinCodeScreenState();
+  State<LoginPinCodeScreen> createState() => _LoginPinCodeScreenState();
 }
 
-class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
-  var selectedindex = 0;
+class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
   String code = '';
+  var selectedindex = 0;
+  bool wrongCode = false;
+  int numberOfTrials = 0;
+  String? leftTrials;
+  bool isBlocked = false;
   final securityRepository = SecurityRepository();
   @override
   Widget build(BuildContext context) {
@@ -34,17 +40,61 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: size.height * 0.3),
-            Text('Создайте PIN-код',
-                style: GoogleFonts.ubuntu(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
-                  color: colors.Colors.greyColor,
-                )),
+            isBlocked == false
+                ? _textWidget('Введите PIN-код')
+                : Text('Приложение\nзаблокировано',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.ubuntu(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                      color: Colors.black,
+                    )),
             SizedBox(height: 20),
-            buildPinRow(),
+            isBlocked == false
+                ? buildPinRow()
+                : _textWidget("Повторите попытку через"),
+            SizedBox(height: isBlocked == false ? 20 : 0),
+            (isBlocked == false)
+                ? wrongCode == true
+                    ? _textWidget('Осталось $leftTrials попыток!')
+                    : _textWidget("")
+                : _textWidget(""),
+            isBlocked == false ? _textWidget("") : _countDown()
           ],
         ),
       ),
+    );
+  }
+
+  _countDown() {
+    return SlideCountdown(
+      padding: EdgeInsets.only(top: 0, bottom: 0),
+      duration: Duration(minutes: 100000, seconds: 30),
+      streamDuration:
+          StreamDuration(Duration(minutes: 4, seconds: 30), onDone: () {
+        securityRepository.blockAccount(isBlocked: "FALSE");
+        setState(() {
+          isBlocked = false;
+        });
+      }),
+      decoration: BoxDecoration(color: Colors.white),
+      textStyle: GoogleFonts.ubuntu(
+        fontWeight: FontWeight.w500,
+        fontSize: 16,
+        color: colors.Colors.greyColor,
+      ),
+    );
+  }
+
+  _textWidget(String titile) {
+    return Center(
+      child: Text(titile,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.ubuntu(
+            fontWeight: FontWeight.w500,
+            fontSize: 16,
+            color: colors.Colors.greyColor,
+          )),
     );
   }
 
@@ -55,13 +105,29 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         DigitHolder(
-            width: width, index: 0, selectedIndex: selectedindex, code: code),
+            wrongCode: wrongCode,
+            width: width,
+            index: 0,
+            selectedIndex: selectedindex,
+            code: code),
         DigitHolder(
-            width: width, index: 1, selectedIndex: selectedindex, code: code),
+            wrongCode: wrongCode,
+            width: width,
+            index: 1,
+            selectedIndex: selectedindex,
+            code: code),
         DigitHolder(
-            width: width, index: 2, selectedIndex: selectedindex, code: code),
+            wrongCode: wrongCode,
+            width: width,
+            index: 2,
+            selectedIndex: selectedindex,
+            code: code),
         DigitHolder(
-            width: width, index: 3, selectedIndex: selectedindex, code: code),
+            wrongCode: wrongCode,
+            width: width,
+            index: 3,
+            selectedIndex: selectedindex,
+            code: code),
       ],
     );
   }
@@ -151,7 +217,7 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
                     backspace();
                   },
                   icon: Text(
-                    "Назад",
+                    "Выйти",
                     style: GoogleFonts.ubuntu(
                       fontSize: 10,
                       fontWeight: FontWeight.w400,
@@ -164,14 +230,12 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
                 },
               ),
               IconButton(
-                highlightColor: code.length == 4 ? null : Colors.white,
-                splashColor: code.length == 4 ? null : Colors.white,
                 onPressed: () {
-                  code.length == 4 ? submit() : print("");
+                  code.isEmpty ? fingerPrintScan() : backspace();
                 },
-                icon: code.length == 4
-                    ? SvgPicture.asset("assets/good.svg")
-                    : Text(""),
+                icon: SvgPicture.asset(
+                  code.isEmpty ? "assets/scan.svg" : "assets/clear.svg",
+                ),
               ),
             ],
           ),
@@ -180,9 +244,9 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
     );
   }
 
-  submit() async {
-    final bool savedPin = await securityRepository.setPinCode(pinCode: code);
-    if (savedPin == true) {
+  fingerPrintScan() async {
+    final result = await securityRepository.bioMetrics();
+    if (result == true) {
       setState(() {
         code = '';
       });
@@ -190,17 +254,65 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
           MaterialPageRoute(builder: (context) {
         return MnemonicsScreen();
       }), (route) => false);
+    } else {
+      setState(() {
+        numberOfTrials++;
+      });
+      var result = await securityRepository.numberOfTrials(
+          numberOfTrials: numberOfTrials);
+      leftTrials = result.toString();
+      setState(() {});
+      if (result <= 0) {
+        await securityRepository.blockAccount(isBlocked: "TRUE");
+        setState(() {
+          isBlocked = true;
+        });
+      }
+    }
+  }
+
+  submit() async {
+    final bool pinCode = await securityRepository.loginCode(pinCode: code);
+    if (pinCode == true) {
+      setState(() {
+        code = '';
+      });
+      Navigator.pushAndRemoveUntil(context,
+          MaterialPageRoute(builder: (context) {
+        return MnemonicsScreen();
+      }), (route) => false);
+    } else {
+      setState(() {
+        wrongCode = true;
+        numberOfTrials++;
+      });
+      var result = await securityRepository.numberOfTrials(
+          numberOfTrials: numberOfTrials);
+      leftTrials = result.toString();
+      setState(() {});
+      if (result <= 0) {
+        await securityRepository.blockAccount(isBlocked: "TRUE");
+        setState(() {
+          isBlocked = true;
+        });
+      }
     }
   }
 
   addDigit(int digit) {
-    if (code.length < 4) {
-      setState(() {
-        code = code + digit.toString();
+    if (isBlocked == false) {
+      if (code.length < 4) {
+        setState(() {
+          code = code + digit.toString();
 
-        selectedindex = code.length;
-      });
-    }
+          selectedindex = code.length;
+        });
+      }
+
+      if (code.length == 4) {
+        submit();
+      }
+    } else {}
   }
 
   backspace() {
@@ -210,6 +322,7 @@ class _SetPinCodeScreenState extends State<SetPinCodeScreen> {
     setState(() {
       code = code.substring(0, code.length - 1);
       selectedindex = code.length;
+      wrongCode = false;
     });
   }
 }

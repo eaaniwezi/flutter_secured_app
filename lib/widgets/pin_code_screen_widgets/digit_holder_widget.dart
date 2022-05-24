@@ -7,12 +7,14 @@ class DigitHolder extends StatelessWidget {
   final int? selectedIndex;
   final int? index;
   final String? code;
+  final bool? wrongCode;
   const DigitHolder({
     @required this.selectedIndex,
     Key? key,
     @required this.width,
     this.index,
     this.code,
+    this.wrongCode,
   }) : super(key: key);
 
   final double? width;
@@ -42,9 +44,11 @@ class DigitHolder extends StatelessWidget {
               width: 16,
               height: 16,
               decoration: BoxDecoration(
-                color: code!.length == 4
+                color: code!.length == 3
                     ? colors.Colors.greenColor
-                    : colors.Colors.orangeColor,
+                    : wrongCode == true
+                        ? colors.Colors.redColor
+                        : colors.Colors.orangeColor,
                 shape: BoxShape.circle,
               ),
             )
