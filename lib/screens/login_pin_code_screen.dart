@@ -87,7 +87,7 @@ class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
       padding: EdgeInsets.only(top: 0, bottom: 0),
       duration: Duration(minutes: 100000, seconds: 30),
       streamDuration:
-          StreamDuration(Duration(minutes: 0, seconds: 3), onDone: () {
+          StreamDuration(Duration(minutes: 4, seconds: 30), onDone: () {
         securityRepository.blockAccount(isBlocked: "FALSE");
         setState(() {
           isBlocked = false;
