@@ -74,7 +74,10 @@ class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
           StreamDuration(Duration(minutes: 4, seconds: 30), onDone: () {
         securityRepository.blockAccount(isBlocked: "FALSE");
         setState(() {
+          numberOfTrials = 0;
           isBlocked = false;
+          wrongCode = false;
+          code = '';
         });
       }),
       decoration: BoxDecoration(color: Colors.white),

@@ -44,11 +44,13 @@ class DigitHolder extends StatelessWidget {
               width: 16,
               height: 16,
               decoration: BoxDecoration(
-                color: code!.length == 3
+                color: code!.length == 4 && wrongCode == null
                     ? colors.Colors.greenColor
-                    : wrongCode == true
-                        ? colors.Colors.redColor
-                        : colors.Colors.orangeColor,
+                    : code!.length == 3&& wrongCode != null
+                        ? colors.Colors.greenColor
+                        : wrongCode == true
+                            ? colors.Colors.redColor
+                            : colors.Colors.orangeColor,
                 shape: BoxShape.circle,
               ),
             )
