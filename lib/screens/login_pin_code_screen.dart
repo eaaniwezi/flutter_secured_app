@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'package:flutter/material.dart';
+import 'package:flutter_keychain/flutter_keychain.dart';
 import '../const/theme.dart' as colors;
 
 import 'package:flutter_svg/flutter_svg.dart';
@@ -23,10 +24,25 @@ class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
   String code = '';
   var selectedindex = 0;
   bool wrongCode = false;
-  int numberOfTrials = 0;
   String? leftTrials;
   bool isBlocked = false;
   final securityRepository = SecurityRepository();
+  @override
+  void initState() {
+    super.initState();
+    checkForPendingTimer();
+  }
+
+  void checkForPendingTimer() async {
+    var remains = await FlutterKeychain.get(key: "initialCount");
+    if (int.parse(remains!) <= 0) {
+      await securityRepository.blockAccount(isBlocked: "TRUE");
+      setState(() {
+        isBlocked = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -71,13 +87,13 @@ class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
       padding: EdgeInsets.only(top: 0, bottom: 0),
       duration: Duration(minutes: 100000, seconds: 30),
       streamDuration:
-          StreamDuration(Duration(minutes: 4, seconds: 30), onDone: () {
+          StreamDuration(Duration(minutes: 0, seconds: 3), onDone: () {
         securityRepository.blockAccount(isBlocked: "FALSE");
         setState(() {
-          numberOfTrials = 0;
           isBlocked = false;
           wrongCode = false;
           code = '';
+          FlutterKeychain.put(key: "initialCount", value: 4.toString());
         });
       }),
       decoration: BoxDecoration(color: Colors.white),
@@ -258,11 +274,7 @@ class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
         return MnemonicsScreen();
       }), (route) => false);
     } else {
-      setState(() {
-        numberOfTrials++;
-      });
-      var result = await securityRepository.numberOfTrials(
-          numberOfTrials: numberOfTrials);
+      var result = await securityRepository.numberOfTrials();
       leftTrials = result.toString();
       setState(() {});
       if (result <= 0) {
@@ -287,10 +299,8 @@ class _LoginPinCodeScreenState extends State<LoginPinCodeScreen> {
     } else {
       setState(() {
         wrongCode = true;
-        numberOfTrials++;
       });
-      var result = await securityRepository.numberOfTrials(
-          numberOfTrials: numberOfTrials);
+      var result = await securityRepository.numberOfTrials();
       leftTrials = result.toString();
       setState(() {});
       if (result <= 0) {

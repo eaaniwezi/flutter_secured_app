@@ -2,9 +2,11 @@
 
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_keychain/flutter_keychain.dart';
 
 class SecurityRepository {
+  SharedPreferences? preferences;
   final bioMetricsAuth = LocalAuthentication();
 
   Future<bool> bioMetrics() async {
@@ -24,16 +26,33 @@ class SecurityRepository {
     }
   }
 
-  Future<void> blockAccount({required String isBlocked}) async {
-    await FlutterKeychain.put(key: "isBlocked", value: isBlocked);
+  Future<bool> isFirstTimeWrongPassword() async {
+    preferences = await SharedPreferences.getInstance();
+    var firstTime = preferences!.getBool("first_time_error");
+    if (firstTime == null) {
+      preferences!.setBool("first_time_error", false);
+      await FlutterKeychain.put(key: "initialCount", value: 4.toString());
+      return true;
+    } else {
+      preferences!.setBool("first_time_error", false);
+      return false;
+    }
   }
 
-  Future<int> numberOfTrials({required int numberOfTrials}) async {
-    await FlutterKeychain.put(
-        key: "numberOfTrials", value: numberOfTrials.toString());
-    final savedCounts = await FlutterKeychain.get(key: "numberOfTrials");
-    var remains = 4 - int.parse(savedCounts.toString());
-    return remains;
+  Future<int> numberOfTrials() async {
+    var isFirstTIme = await isFirstTimeWrongPassword();
+    if (isFirstTIme == true) {
+      return 4;
+    } else {
+      var initialCount = await FlutterKeychain.get(key: "initialCount");
+      var remains = int.parse(initialCount!) - 1;
+      await FlutterKeychain.put(key: "initialCount", value: remains.toString());
+      return remains;
+    }
+  }
+
+  Future<void> blockAccount({required String isBlocked}) async {
+    await FlutterKeychain.put(key: "isBlocked", value: isBlocked);
   }
 
   Future<bool> setPinCode({required String pinCode}) async {
@@ -43,16 +62,17 @@ class SecurityRepository {
 
   Future<bool> loginCode({required String pinCode}) async {
     var oldCode = await FlutterKeychain.get(key: "pinCode");
+
     if (pinCode != oldCode) {
       return false;
     } else {
+      isFirstTimeWrongPassword();
       return true;
     }
   }
 
   Future<bool> isNewUser() async {
     var oldCode = await FlutterKeychain.get(key: "pinCode");
-
     if (oldCode == null) {
       return true;
     } else {

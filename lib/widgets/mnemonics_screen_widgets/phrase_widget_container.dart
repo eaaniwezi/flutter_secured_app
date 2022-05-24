@@ -19,7 +19,8 @@ class PhraseWidgetContainer extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8), color: Color(0xffCCCCCC)),
+            borderRadius: BorderRadius.circular(8),
+            color: const Color(0xffCCCCCC)),
         child: Center(
           child: Text(
             phrases,
